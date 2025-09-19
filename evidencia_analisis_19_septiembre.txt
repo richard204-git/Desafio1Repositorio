@@ -1,0 +1,47 @@
+# Informe - Desafío 1: Ingeniería Inversa
+## resumen
+El desafío consiste en realizar ingeniería inversa sobre un mensaje que ha sido puesto  a dos procesos consecutivos:
+1.Compresión del texto plano que se comprimió con uno de dos algoritmos:
+- RLE (Run-Length Encoding).
+- LZ78.
+2.Encriptación mediante la  rotación de bits hacia la izquierda de cada byte + operación XOR  con una clave de un byte (K).
+
+Los datos que conocemos es el mensaje comprimido y encriptado, y una pista que seria un fragmento del contenido del texto plano.
+# objetivo
+El objetivo es identificar:
+- ¿Cuál de los dos métodos de compresión se utilizó?
+- ¿Cuáles son los parámetros de encriptación (rotación n y clave k)?
+- Desencriptar y descomprimir el mensaje para revelar el contenido original del texto plano.
+# reglas de desarrollo
+- Usar punteros, arreglos y memoria dinámica.
+- No usar `string`, estructuras ni la STL.
+- Desarrollar en Qt.
+- Hacer uso eficiente de la memoria.
+- El texto plano puede contener letras de la A a la Z (mayúsculas y minúsculas), números del 1 al 9, y no contiene tildes, puntuación, ni la letra Ñ.
+# diseño a la solución
+La solución se basa en un enfoque de fuerza bruta y verificación. El proceso se puede visualizar de la siguiente manera:
+
+[Mensaje encriptado] 
+        ↓
+[Desencriptar]
+    - Probar rotación (1..7)
+    - Probar clave XOR (0..255)
+        ↓
+[Mensaje comprimido]
+        ↓
+[Intentar descompresión con RLE]
+        ↓
+[Intentar descompresión con LZ78]
+        ↓
+[Comparar con fragmento conocido]
+        ↓
+[Confirmar método + parámetros]
+        ↓
+[Mensaje original completo]
+
+podemos hacer el uso de funciones para reutilizar el codigo:
+- Manejo de la memoria: Usando 'new' y 'delete' para liberar la memoria correctamente.
+- Encriptar/Desencriptar: Funciones para la rotación de bits y la operación XOR.
+- Comprimir/Descomprimir: Funciones para manejar la lógica de RLE y LZ78.
+
+para dar solución al problema presentado, consideraremos el fragmento del mensaje originalcomo un pieza importante de comparación, para la otra parte del mensaje encriptado y comprimido; al descomprimir y desencriptar, con los respectivos métodos (LRE o Lempel-zz78, rotación n-bytes y operación XOR con k bytes), se hará una comparación entre fragmento original y fragmento procesado, el resultado de coincidencia determinará los procesos de compresión y encriptación empleados en el mansaje.
