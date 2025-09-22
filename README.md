@@ -14,6 +14,6 @@ include/ → Archivos de cabecera (.h)
 
 ## restricciones o reglas a seguir
 - Sin `std::string` ni STL.
-- Uso de punteros y memoria dinamica (`new`, `delete`).
+- Uso de punteros y memoria dinamica en el heap y el stack (`new`, `delete`).
 - Variables justificadas: `unsigned char` para bytes, `char*` para cadenas.
 

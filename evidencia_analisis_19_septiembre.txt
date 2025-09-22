@@ -46,21 +46,3 @@ podemos hacer el uso de funciones para reutilizar el codigo:
 
 para dar solución al problema presentado, consideraremos el fragmento del mensaje originalcomo un pieza importante de comparación, para la otra parte del mensaje encriptado y comprimido; al descomprimir y desencriptar, con los respectivos métodos (LRE o Lempel-zz78, rotación n-bytes y operación XOR con k bytes), se hará una comparación entre fragmento original y fragmento procesado, el resultado de coincidencia determinará los procesos de compresión y encriptación empleados en el mansaje.
 
-
-como debe de ser la estructura de carpeta del desafio
-
-desafio1/
-│── src/
-│    ├── main.cpp       ← borrador o base 
-│    ├── rle.cpp        ← probar codigo para ver si es codigo de comprension RLE
-│    ├── lz78.cpp       ← probar codigo para ver si es codigo de comprension Z78
-│    ├── bitwise.cpp    ← rotacion y XOR
-│    ├── utils.cpp      ← Funciones basicas (miStrlen, miStrcpy, etc.)
-│
-│── include/
-│    ├── rle.h
-│    ├── lz78.h
-│    ├── bitwise.h
-│    ├── utils.h
-│
-│── README.md           
