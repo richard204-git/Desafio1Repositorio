@@ -5,13 +5,53 @@ using namespace std;
 //declaramos las funciones
 void LRE(char []);
 void descomprimirLRE(char []);
+char* descomprimirLZ78(char* mensaje);
 char* leerArchivo(const char* nombreArchivo);
 unsigned char rotateLeft(unsigned char b, int n);
 unsigned char rotateRight(unsigned char b, int n);
 unsigned char applyXOR(unsigned char b, unsigned char key);
 char* encriptar(const char* mensaje, int n, unsigned char key);
 char* desencriptar(const char* mensaje, int n, unsigned char key);
+bool contieneFragmento(const char* texto, const char* fragmento);
+int miStrlen(const char* s);
+void miStrcpy(char* dest, const char* src);
 
+// ----------------- UTILIDADES DE CADENAS ----------------- //
+int miStrlen(const char* s) {
+    if (!s) return 0;
+    int i = 0;
+    while (s[i] != '\0') i++;
+    return i;
+}
+
+void miStrcpy(char* dest, const char* src) {
+    if (!dest || !src) return;
+    int i = 0;
+    while (src[i] != '\0') { 
+        dest[i] = src[i]; 
+        i++; 
+    }
+    dest[i] = '\0';
+}
+
+bool contieneFragmento(const char* texto, const char* fragmento) {
+    if (!texto || !fragmento) return false;
+    int lt = miStrlen(texto);
+    int lf = miStrlen(fragmento);
+    if (lf == 0 || lf > lt) return false;
+    
+    for (int i = 0; i <= lt - lf; i++) {
+        bool coincide = true;
+        for (int j = 0; j < lf; j++) {
+            if (texto[i + j] != fragmento[j]) { 
+                coincide = false; 
+                break; 
+            }
+        }
+        if (coincide) return true;
+    }
+    return false;
+}
 /* ----------------- lectura del los archivos.txt ----------------- */
 char* leerArchivo(const char* nombreArchivo) {
     ifstream archivo(nombreArchivo, ios::binary);
@@ -94,6 +134,93 @@ char* desencriptar(const char* mensaje, int n, unsigned char key) {
     resultado[len] = '\0';
     return resultado;
 }
+//----------------- DESCOMPRESIÓN LZ78 ----------------//
+char* descomprimirLZ78(char* mensaje) {
+    if (!mensaje) return nullptr;
+    int len = miStrlen(mensaje);
+    if (len == 0) return nullptr;
+    
+    // Buffer de salida (más grande por seguridad)
+    char* salida = new char[len * 20 + 1];
+    int posSalida = 0;
+    
+    // Diccionario dinámico
+    int tamDic = 0;
+    int capacidadDic = 256;
+    char** diccionario = new char*[capacidadDic];
+    
+    int i = 0;
+    while (i < len && posSalida < len * 20 - 10) {
+        // Leer índice (puede ser de varios dígitos)
+        if (!(mensaje[i] >= '0' && mensaje[i] <= '9')) {
+            // No es formato LZ78 válido
+            delete[] salida;
+            for (int k = 0; k < tamDic; k++) delete[] diccionario[k];
+            delete[] diccionario;
+            return nullptr;
+        }
+        
+        int indice = 0;
+        while (i < len && mensaje[i] >= '0' && mensaje[i] <= '9') {
+            indice = indice * 10 + (mensaje[i] - '0');
+            i++;
+        }
+        
+        if (i >= len) break;
+        char letra = mensaje[i++];
+        
+        // Crear nueva cadena
+        int longPrefijo = 0;
+        char* prefijo = nullptr;
+        
+        if (indice > 0 && indice <= tamDic) {
+            prefijo = diccionario[indice - 1];
+            longPrefijo = miStrlen(prefijo);
+        }
+        
+        // Construir nueva cadena: prefijo + letra
+        char* nuevaCadena = new char[longPrefijo + 2];
+        int pos = 0;
+        
+        // Copiar prefijo
+        for (int j = 0; j < longPrefijo; j++) {
+            nuevaCadena[pos++] = prefijo[j];
+        }
+        // Añadir nueva letra
+        nuevaCadena[pos++] = letra;
+        nuevaCadena[pos] = '\0';
+        
+        // Expandir diccionario si es necesario
+        if (tamDic >= capacidadDic) {
+            capacidadDic *= 2;
+            char** nuevoDic = new char*[capacidadDic];
+            for (int j = 0; j < tamDic; j++) {
+                nuevoDic[j] = diccionario[j];
+            }
+            delete[] diccionario;
+            diccionario = nuevoDic;
+        }
+        
+        // Guardar en diccionario
+        diccionario[tamDic++] = nuevaCadena;
+        
+        // Añadir a la salida
+        int longNuevaCadena = miStrlen(nuevaCadena);
+        for (int j = 0; j < longNuevaCadena && posSalida < len * 20 - 1; j++) {
+            salida[posSalida++] = nuevaCadena[j];
+        }
+    }
+    
+    salida[posSalida] = '\0';
+    
+    // Liberar diccionario
+    for (int k = 0; k < tamDic; k++) {
+        delete[] diccionario[k];
+    }
+    delete[] diccionario;
+    
+    return salida;
+}
 
 //----------------- borrador del main ----------------- //
 int main() {
@@ -115,7 +242,7 @@ int main() {
     }
     
     cout << "Los archivos cargados han sido cargados correctamente" << endl;
-    cout << "Mensaje encriptado - Longitud: " << strlen(mensajeEncriptado) << endl;
+    cout << "Mensaje encriptado - Longitud: " << miStrlen(mensajeEncriptado) << endl;
     cout << "Fragmento de pista: '" << fragmentoPista << "'" << endl;
     cout << endl;
     
@@ -137,7 +264,7 @@ int main() {
             //mira si el resultado desencriptado(suponiendo que este en formato RLE) contiene la pista cuando se descomprime con RLE
             
             //crear buffer en el heap para descompresion
-            char* buffer = new char[strlen(desencriptado) * 10 + 1];
+            char* buffer = new char[miStrlen(desencriptado) * 10 + 1];
             int pos = 0;
             int i = 0;
             bool formatoValido = true;
@@ -161,28 +288,44 @@ int main() {
                 }
                 
                 char caracter = desencriptado[i++];
-                for (int j = 0; j < contador && pos < strlen(desencriptado) * 10; j++) {
+                for (int j = 0; j < contador && pos < miStrlen(desencriptado) * 10; j++) {
                     buffer[pos++] = caracter;
                 }
             }
             buffer[pos] = '\0'; // el \ es pare terminar la cadena o es un caracter nulo
             
             //verifica si contiene el fragmento de la pista
-            if (formatoValido && strstr(buffer, fragmentoPista) != nullptr) {
+            if (formatoValido && contieneFragmento(buffer, fragmentoPista)) {
                 cout << endl;
                 cout << "¡INFOMRACION ENCONTRADA!" << endl;
                 cout << "Método: RLE" << endl;
                 cout << "Rotacion (n): " << n << " bits" << endl;
                 cout << "Clave XOR (K): " << key << endl;
                 cout << "El MENSAJE ORIGINAL COMPLETO ES:" << endl; 
+                cout << buffer << endl;
                 encontrado = true;
             }
             
             delete[] buffer;
-            delete[] desencriptado;
+            // Si no encontró con RLE, probar LZ78
+            if (!encontrado) {
+              char* resultadoLZ78 = descomprimirLZ78(desencriptado);
+              if (resultadoLZ78 && miStrlen(resultadoLZ78) > 0) {
+                if (contieneFragmento(resultadoLZ78, fragmentoPista)) {
+                cout << endl;
+                cout << "¡INFORMACION ENCONTRADA!" << endl;
+                cout << "Método: LZ78" << endl;
+                cout << "Rotacion (n): " << n << " bits" << endl;
+                cout << "Clave XOR (K): " << key << endl;
+                cout << "El MENSAJE ORIGINAL COMPLETO ES:" << endl;
+                cout << resultadoLZ78 << endl;
+                encontrado = true;
+            }
+            delete[] resultadoLZ78;
         }
     }
-    
+    delete[] desencriptado;
+
     //limpiar memoria del heap
     delete[] mensajeEncriptado;
     delete[] fragmentoPista;
