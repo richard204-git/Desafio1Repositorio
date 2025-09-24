@@ -3,8 +3,8 @@
 using namespace std;
 
 //declaramos las funciones
-void LRE(char []);
-void descomprimirLRE(char []);
+void RLE(char []);
+void descomprimirRLE(char []);
 char* descomprimirLZ78(char* mensaje);
 char* leerArchivo(const char* nombreArchivo);
 unsigned char rotateLeft(unsigned char b, int n);
@@ -325,10 +325,12 @@ int main() {
         }
     }
     delete[] desencriptado;
+  }
+}
 
-    //limpiar memoria del heap
-    delete[] mensajeEncriptado;
-    delete[] fragmentoPista;
+//limpiar memoria del heap
+delete[] mensajeEncriptado;
+delete[] fragmentoPista;
     
     if (!encontrado) {
         cout << "No se ha encontrado la pista con los parametros dados." << endl;
@@ -338,8 +340,10 @@ int main() {
     cout << "El analisis ha sido completado exitosamente." << endl;
     return 0;
 }
+
+
 //----------------- funciones del RLE -----------------//
-void LRE(char* mensaje) {
+void RLE(char* mensaje) {
     int i = 0;
     while (mensaje[i] != '\0') {
         char actual = mensaje[i];
@@ -354,7 +358,7 @@ void LRE(char* mensaje) {
     cout << endl;
 }
 
-void descomprimirLRE(char* mensaje) {
+void descomprimirRLE(char* mensaje) {
     int i = 0;
     while (mensaje[i] != '\0') {
         int contador = 0;
