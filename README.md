@@ -6,7 +6,7 @@ Este proyecto implementa un sistema de ingeniería inversa para desencripta y de
 2. Intenta desencriptar el mensaje probado:
     - todas las rotaciones de bits (1 al 7)
     - todas las claves XOR posibles (0 a 255)
-3. Intenta descomprimir el mensaje con el arreglo obtenido de las operaciones anterioes, y probar con ese arreglo los dos metodos de descomprensión:
+3. Intenta descomprimir el mensaje con el arreglo obtenido de las operaciones anteriores, y probar con ese arreglo los dos metodos de descomprensión:
     - RLE
     - LZ78
 4. Verifica si el mensaje descomprimido contiene la algun fragmento de la pista dada (pista.txt), si lo encuentra, muestra el mensaje y que parámetros(cuantas rotaciones, claves XOR usadas y que tipo de descompresión) se ha usado.
