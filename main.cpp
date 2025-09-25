@@ -3,7 +3,6 @@
 using namespace std;
 
 //declaramos las funciones
-void RLE(char []);
 void descomprimirRLE(char []);
 char* descomprimirLZ78(char* mensaje);
 char* leerArchivo(const char* nombreArchivo);
@@ -252,12 +251,12 @@ int main() {
     
     bool encontrado = false;
     
-    //intenta todas las combinaciones
+    //intenta todas las combinaciones con la rotacion de bits
     for (int n = 1; n <= 7 && !encontrado; n++) {
         cout << "Probando rotacion " << n << " bits..." << endl;
         
         for (int key = 0; key <= 255 && !encontrado; key++) {
-            //desencripta
+            //desencripta, provando claves XOR de 0 a 255
             char* desencriptado = desencriptar(mensajeEncriptado, n, (unsigned char)key);
             if (!desencriptado) continue;
             
@@ -277,7 +276,7 @@ int main() {
                 }
                 
                 int contador = 0;
-                while (desencriptado[i] >= '0' && desencriptado[i] <= '9') {
+                while (desencriptado[i] >= '0' && desencriptado[i] <= '9') { // convierte el caracter a entero.
                     contador = contador * 10 + (desencriptado[i] - '0');
                     i++;
                 }
@@ -343,21 +342,6 @@ delete[] fragmentoPista;
 
 
 //----------------- funciones del RLE -----------------//
-void RLE(char* mensaje) {
-    int i = 0;
-    while (mensaje[i] != '\0') {
-        char actual = mensaje[i];
-        int contador = 1;
-        while (mensaje[i] == mensaje[i + 1]) {
-            contador++;
-            i++;
-        }
-        cout << contador << actual;
-        i++;
-    }
-    cout << endl;
-}
-
 void descomprimirRLE(char* mensaje) {
     int i = 0;
     while (mensaje[i] != '\0') {
