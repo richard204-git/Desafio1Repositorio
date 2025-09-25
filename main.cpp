@@ -3,75 +3,39 @@
 using namespace std;
 
 //declaramos las funciones
-void descomprimirRLE(char []);
-char* descomprimirLZ78(char* mensaje);
 char* leerArchivo(const char* nombreArchivo);
 unsigned char rotateLeft(unsigned char b, int n);
 unsigned char rotateRight(unsigned char b, int n);
 unsigned char applyXOR(unsigned char b, unsigned char key);
 char* encriptar(const char* mensaje, int n, unsigned char key);
 char* desencriptar(const char* mensaje, int n, unsigned char key);
+void descomprimirRLE(char []);
+char* descomprimirLZ78(char* mensaje);
 bool contieneFragmento(const char* texto, const char* fragmento);
 int miStrlen(const char* s);
 void miStrcpy(char* dest, const char* src);
 
-// ----------------- UTILIDADES DE CADENAS ----------------- //
-int miStrlen(const char* s) {
-    if (!s) return 0;
-    int i = 0;
-    while (s[i] != '\0') i++;
-    return i;
-}
 
-void miStrcpy(char* dest, const char* src) {
-    if (!dest || !src) return;
-    int i = 0;
-    while (src[i] != '\0') { 
-        dest[i] = src[i]; 
-        i++; 
-    }
-    dest[i] = '\0';
-}
-
-bool contieneFragmento(const char* texto, const char* fragmento) {
-    if (!texto || !fragmento) return false;
-    int lt = miStrlen(texto);
-    int lf = miStrlen(fragmento);
-    if (lf == 0 || lf > lt) return false;
-    
-    for (int i = 0; i <= lt - lf; i++) {
-        bool coincide = true;
-        for (int j = 0; j < lf; j++) {
-            if (texto[i + j] != fragmento[j]) { 
-                coincide = false; 
-                break; 
-            }
-        }
-        if (coincide) return true;
-    }
-    return false;
-}
 /* ----------------- lectura del los archivos.txt ----------------- */
 char* leerArchivo(const char* nombreArchivo) {
-    ifstream archivo(nombreArchivo, ios::binary);
-    if (!archivo) {
+    ifstream archivo(nombreArchivo, ios::binary); // con el binario para evitar saltos de linea
+    if (!archivo) { // si el archivo no exite o hay un error muestra un mensaje y davuleve nullptr q no apunta a nada
         cout << "ERROR: No se pudo abrir el archivo " << nombreArchivo << endl;
         return nullptr;
     }
     
-    archivo.seekg(0, ios::end);
-    int tamaño = (int)archivo.tellg();
-    archivo.seekg(0, ios::beg);
-    
-    if (tamaño <= 0) {
+    archivo.seekg(0, ios::end); // con seekg se mueve al final del archivo
+    int tamaño = (int)archivo.tellg(); //telling para saber la cantidad de bytes
+    archivo.seekg(0, ios::beg);//mueve el puntero para volver a leer    
+    if (tamaño <= 0) { //si el tamaño es 0 lo cierra
         cout << "ERROR: Archivo vacío: " << nombreArchivo << endl;
         archivo.close();
         return nullptr;
     }
     
-    char* buffer = new char[tamaño + 1];
-    archivo.read(buffer, tamaño);
-    buffer[tamaño] = '\0';
+    char* buffer = new char[tamaño + 1]; //asigna espacio para el contenido y para el +1 para el caracternulo q es el fin de la cadena
+    archivo.read(buffer, tamaño); //lee el contenido y lo guada en buffer
+    buffer[tamaño] = '\0'; //agrega el caracter nulo en el +1 de arriba
     archivo.close();
     
     return buffer;
@@ -90,27 +54,6 @@ unsigned char rotateRight(unsigned char b, int n) {
 
 unsigned char applyXOR(unsigned char b, unsigned char key) {
     return (unsigned char)(b ^ key);
-}
-
-//----------------- encriptar ----------------//
-char* encriptar(const char* mensaje, int n, unsigned char key) {
-    if (!mensaje) return nullptr; // el nullptr es para devolver un puntero nulo
-    int len = 0;
-    while (mensaje[len] != '\0') len++; // calcular longitud manualmente
-    
-    if (len == 0) return nullptr;
-    
-    char* resultado = new char[len + 1];
-    for (int i = 0; i < len; i++) {
-        unsigned char b = (unsigned char)mensaje[i];
-        // Paso 1: Rotación izquierda
-        unsigned char rotado = rotateLeft(b, n);
-        // Paso 2: XOR
-        unsigned char encriptado = applyXOR(rotado, key);
-        resultado[i] = (char)encriptado;
-    }
-    resultado[len] = '\0';
-    return resultado;
 }
 
 //----------------- desencriptar ----------------//
@@ -220,7 +163,42 @@ char* descomprimirLZ78(char* mensaje) {
     
     return salida;
 }
+// ----------------- UTILIDADES DE CADENAS del LZ78 ----------------- //
+int miStrlen(const char* s) {
+    if (!s) return 0;
+    int i = 0;
+    while (s[i] != '\0') i++;
+    return i;
+}
 
+void miStrcpy(char* dest, const char* src) {
+    if (!dest || !src) return;
+    int i = 0;
+    while (src[i] != '\0') { 
+        dest[i] = src[i]; 
+        i++; 
+    }
+    dest[i] = '\0';
+}
+
+bool contieneFragmento(const char* texto, const char* fragmento) {
+    if (!texto || !fragmento) return false;
+    int lt = miStrlen(texto);
+    int lf = miStrlen(fragmento);
+    if (lf == 0 || lf > lt) return false;
+    
+    for (int i = 0; i <= lt - lf; i++) {
+        bool coincide = true;
+        for (int j = 0; j < lf; j++) {
+            if (texto[i + j] != fragmento[j]) { 
+                coincide = false; 
+                break; 
+            }
+        }
+        if (coincide) return true;
+    }
+    return false;
+}
 //----------------- borrador del main ----------------- //
 int main() {
     cout << "   DESAFÍO 1: INGENIERIA INVERSA " << endl;
@@ -342,18 +320,28 @@ delete[] fragmentoPista;
 
 
 //----------------- funciones del RLE -----------------//
-void descomprimirRLE(char* mensaje) {
+void descomprimirRle(char* mensaje, char* mensaje2) {
+    //Ingresa un puntero que contiene la dirección de un arreglo de char.
     int i = 0;
-    while (mensaje[i] != '\0') {
+    int k = 0;
+
+    while (mensaje[i] != '\0') { //Solo se entra cuando es distinto del final de la cadena(! caracter vacio).
         int contador = 0;
-        while (mensaje[i] >= '0' && mensaje[i] <= '9') {
-            contador = contador * 10 + (mensaje[i] - '0');
-            i++;
+
+
+        while (mensaje[i] >= '0' && mensaje[i] <= '9') { //Verifico que es un número y no una letra, utlizando el intervalo[0,9], en ASCII[48,57]
+            contador = contador * 10 + (mensaje[i] - '0'); //Utilizando el valor en código ASCII, convierto los caracter de números en 
+            i++;                                           //variables entero para poder operar.( en este caso[n-valor (ASII entre[48,57])-48 posición de '0'
+        }        // ejem: '4'-'0' --> 52-48=4
+
+
+        char caracter = mensaje[i]; //me quedo con el caracter letra, para despues repetirlo n-veces.
+
+        for (int j = 0; j < contador; j++) {  //ciclo encardo de repetir n-veces.
+            mensaje2[k++] = caracter; //Indexación con auto incremento.
         }
-        char caracter = mensaje[i];
-        for (int j = 0; j < contador; j++) {
-            cout << caracter;
-        }
+
         i++;
     }
+
 }
