@@ -4,16 +4,13 @@ using namespace std;
 
 //declaramos las funciones
 char* leerArchivo(const char* nombreArchivo);
-unsigned char rotateLeft(unsigned char b, int n);
 unsigned char rotateRight(unsigned char b, int n);
 unsigned char applyXOR(unsigned char b, unsigned char key);
-char* encriptar(const char* mensaje, int n, unsigned char key);
 char* desencriptar(const char* mensaje, int n, unsigned char key);
-void descomprimirRLE(char []);
-char* descomprimirLZ78(char* mensaje);
-bool contieneFragmento(const char* texto, const char* fragmento);
-int miStrlen(const char* s);
-void miStrcpy(char* dest, const char* src);
+void descomprimirRle(char* mensaje, char* mensaje2) 
+void copiaArreglo(char arreDestino[], char arreOrigen[])
+int longitudArr(char cadena[]) 
+void lz78_descomprimir(char comprimido[], char descomprimido[])  
 
 
 /* ----------------- lectura del los archivos.txt ----------------- */
@@ -42,164 +39,133 @@ char* leerArchivo(const char* nombreArchivo) {
 }
 
 //----------------- operaciones de la rotacion de bits -----------------//
-unsigned char rotateLeft(unsigned char b, int n) {
-    n &= 7; // asegurar n está en rango 0-7
-    return (unsigned char)(((b << n) | (b >> (8 - n))) & 0xFF);
-}
-
 unsigned char rotateRight(unsigned char b, int n) {
-    n &= 7; // asegurar n está en rango 0-7
-    return (unsigned char)(((b >> n) | (b << (8 - n))) & 0xFF);
+    n &= 7; //asegura n está en rango 0-7
+    return (unsigned char)(((b >> n) | (b << (8 - n))) & 0xFF); //hace rotacion a la derecha para invertir la hecha a la izquierda por la encriptacion
 }
 
-unsigned char applyXOR(unsigned char b, unsigned char key) {
-    return (unsigned char)(b ^ key);
+// desplaza los bits de b a la derecha o desplaza los bit de b 8 posiciones, con el 0xFF se asegura de que el resultado este limitado a 8 bits.
+
+//--------------- claves XOR ---------------------
+unsigned char applyXOR(unsigned char b, unsigned char key) { //recibe 2 parametros b y key
+    return (unsigned char)(b ^ key); // aplica un XOR bit a bit entre b y key, devulelve 1 los bits son diferentes, y 0 si son iguales 
 }
 
 //----------------- desencriptar ----------------//
-char* desencriptar(const char* mensaje, int n, unsigned char key) {
-    if (!mensaje) return nullptr;
+char* desencriptar(const char* mensaje, int n, unsigned char key) { //mensaje.txt n=bits rotados key=XOR, retorna un puntero en una nueva cadena desencripta
+    if (!mensaje) return nullptr; // si mensaje nulo o no hay nada no hace nada
     int len = 0;
-    while (mensaje[len] != '\0') len++; // calcular longitud manualmente
+    while (mensaje[len] != '\0') len++; //calcula longitud del mensaje hasta encontrar caracter nulo 
     
-    if (len == 0) return nullptr;
+    if (len == 0) return nullptr; // si es 0 no hay nada q desencriptar
     
-    char* resultado = new char[len + 1];
-    for (int i = 0; i < len; i++) {
+    char* resultado = new char[len + 1]; //reserva memoria para cadena + /0
+    for (int i = 0; i < len; i++) { //recorre cada caracter el mensaje encriptado
         unsigned char b = (unsigned char)mensaje[i];
-        //1: XOR inverso (XOR es su propio inverso)
+        //convierte caracteres unsigned char para q trabajen a nivel de bits (0-255)
         unsigned char despuesXOR = applyXOR(b, key);
-        //2: Rotación derecha (inverso de rotación izquierda)
-        unsigned char original = rotateRight(despuesXOR, n);
-        resultado[i] = (char)original;
+        //Rotación derecha (inverso de rotacion izquierda)
+        unsigned char original = rotateRight(despuesXOR, n); //aplica la rotacion derecha revirtiendo la izquierda
+        resultado[i] = (char)original; //vuelve la cadena desencripta a se otra vez char, no unsigned char
     }
-    resultado[len] = '\0';
+    resultado[len] = '\0'; //para q sea valida
     return resultado;
 }
+
 //----------------- DESCOMPRESIÓN LZ78 ----------------//
-char* descomprimirLZ78(char* mensaje) {
-    if (!mensaje) return nullptr;
-    int len = miStrlen(mensaje);
-    if (len == 0) return nullptr;
-    
-    // Buffer de salida (más grande por seguridad)
-    char* salida = new char[len * 20 + 1];
-    int posSalida = 0;
-    
-    // Diccionario dinámico
-    int tamDic = 0;
-    int capacidadDic = 256;
-    char** diccionario = new char*[capacidadDic];
-    
+
+//Función que copia un char arreglo en otro char arreglo.
+void copiaArreglo(char arreDestino[], char arreOrigen[]) {
     int i = 0;
-    while (i < len && posSalida < len * 20 - 10) {
-        // Leer índice (puede ser de varios dígitos)
-        if (!(mensaje[i] >= '0' && mensaje[i] <= '9')) {
-            // No es formato LZ78 válido
-            delete[] salida;
-            for (int k = 0; k < tamDic; k++) delete[] diccionario[k];
-            delete[] diccionario;
-            return nullptr;
-        }
-        
+    while (arreOrigen[i] != '\0') {
+        arreDestino[i] = arreOrigen[i];
+        i++;
+    }
+    arreDestino[i] = '\0';
+}
+
+int longitudArr(char cadena[]) {
+    int contador = 0;
+    while (cadena[contador] != '\0') {
+        contador++;
+    }
+    return contador;
+}
+
+// función de descompresión LZ78
+void lz78_descomprimir(char comprimido[], char descomprimido[]) {
+    char diccionario[1000][1000];
+    int tamDic = 0;
+    int posSalida = 0;
+    int i = 0;
+    while (comprimido[i] != '\0') {
         int indice = 0;
-        while (i < len && mensaje[i] >= '0' && mensaje[i] <= '9') {
-            indice = indice * 10 + (mensaje[i] - '0');
+
+        // Leer números (índice)
+        while (comprimido[i] >= '0' && comprimido[i] <= '9') {
+            indice = indice * 10 + (comprimido[i] - '0');
             i++;
         }
-        
-        if (i >= len) break;
-        char letra = mensaje[i++];
-        
-        // Crear nueva cadena
-        int longPrefijo = 0;
-        char* prefijo = nullptr;
-        
-        if (indice > 0 && indice <= tamDic) {
-            prefijo = diccionario[indice - 1];
-            longPrefijo = miStrlen(prefijo);
+
+        char c = comprimido[i];
+        i++;
+
+        char nuevo[1000] = "";
+
+        if (indice == 0) {
+            nuevo[0] = c;
+            nuevo[1] = '\0';
         }
-        
-        // Construir nueva cadena: prefijo + letra
-        char* nuevaCadena = new char[longPrefijo + 2];
-        int pos = 0;
-        
-        // Copiar prefijo
-        for (int j = 0; j < longPrefijo; j++) {
-            nuevaCadena[pos++] = prefijo[j];
+        else {
+            copiaArreglo(nuevo, diccionario[indice - 1]);
+            int len = longitudArr(nuevo);
+            nuevo[len] = c;
+            nuevo[len + 1] = '\0';
         }
-        // Añadir nueva letra
-        nuevaCadena[pos++] = letra;
-        nuevaCadena[pos] = '\0';
-        
-        // Expandir diccionario si es necesario
-        if (tamDic >= capacidadDic) {
-            capacidadDic *= 2;
-            char** nuevoDic = new char*[capacidadDic];
-            for (int j = 0; j < tamDic; j++) {
-                nuevoDic[j] = diccionario[j];
-            }
-            delete[] diccionario;
-            diccionario = nuevoDic;
-        }
-        
-        // Guardar en diccionario
-        diccionario[tamDic++] = nuevaCadena;
-        
-        // Añadir a la salida
-        int longNuevaCadena = miStrlen(nuevaCadena);
-        for (int j = 0; j < longNuevaCadena && posSalida < len * 20 - 1; j++) {
-            salida[posSalida++] = nuevaCadena[j];
+
+        copiaArreglo(diccionario[tamDic], nuevo);
+        tamDic++;
+
+        int j = 0;
+        while (nuevo[j] != '\0') {
+            descomprimido[posSalida] = nuevo[j];
+            posSalida++;
+            j++;
         }
     }
-    
-    salida[posSalida] = '\0';
-    
-    // Liberar diccionario
-    for (int k = 0; k < tamDic; k++) {
-        delete[] diccionario[k];
-    }
-    delete[] diccionario;
-    
-    return salida;
-}
-// ----------------- UTILIDADES DE CADENAS del LZ78 ----------------- //
-int miStrlen(const char* s) {
-    if (!s) return 0;
-    int i = 0;
-    while (s[i] != '\0') i++;
-    return i;
+
+    descomprimido[posSalida] = '\0';
 }
 
-void miStrcpy(char* dest, const char* src) {
-    if (!dest || !src) return;
+//----------------- funciones del RLE -----------------//
+void descomprimirRle(char* mensaje, char* mensaje2) {
+    //Ingresa un puntero que contiene la dirección de un arreglo de char.
     int i = 0;
-    while (src[i] != '\0') { 
-        dest[i] = src[i]; 
-        i++; 
+    int k = 0;
+
+    while (mensaje[i] != '\0') { //Solo se entra cuando es distinto del final de la cadena(! caracter vacio).
+        int contador = 0;
+
+
+        while (mensaje[i] >= '0' && mensaje[i] <= '9') { //Verifico que es un número y no una letra, utlizando el intervalo[0,9], en ASCII[48,57]
+            contador = contador * 10 + (mensaje[i] - '0'); //Utilizando el valor en código ASCII, convierto los caracter de números en 
+            i++;                                           //variables entero para poder operar.( en este caso[n-valor (ASII entre[48,57])-48 posición de '0'
+        }        // ejem: '4'-'0' --> 52-48=4
+
+
+        char caracter = mensaje[i]; //me quedo con el caracter letra, para despues repetirlo n-veces.
+
+        for (int j = 0; j < contador; j++) {  //ciclo encardo de repetir n-veces.
+            mensaje2[k++] = caracter; //Indexación con auto incremento.
+        }
+
+        i++;
     }
-    dest[i] = '\0';
+
 }
 
-bool contieneFragmento(const char* texto, const char* fragmento) {
-    if (!texto || !fragmento) return false;
-    int lt = miStrlen(texto);
-    int lf = miStrlen(fragmento);
-    if (lf == 0 || lf > lt) return false;
-    
-    for (int i = 0; i <= lt - lf; i++) {
-        bool coincide = true;
-        for (int j = 0; j < lf; j++) {
-            if (texto[i + j] != fragmento[j]) { 
-                coincide = false; 
-                break; 
-            }
-        }
-        if (coincide) return true;
-    }
-    return false;
-}
 //----------------- borrador del main ----------------- //
+
 int main() {
     cout << "   DESAFÍO 1: INGENIERIA INVERSA " << endl;
     cout << "se esta cargando los archivos..." << endl;
@@ -319,29 +285,3 @@ delete[] fragmentoPista;
 }
 
 
-//----------------- funciones del RLE -----------------//
-void descomprimirRle(char* mensaje, char* mensaje2) {
-    //Ingresa un puntero que contiene la dirección de un arreglo de char.
-    int i = 0;
-    int k = 0;
-
-    while (mensaje[i] != '\0') { //Solo se entra cuando es distinto del final de la cadena(! caracter vacio).
-        int contador = 0;
-
-
-        while (mensaje[i] >= '0' && mensaje[i] <= '9') { //Verifico que es un número y no una letra, utlizando el intervalo[0,9], en ASCII[48,57]
-            contador = contador * 10 + (mensaje[i] - '0'); //Utilizando el valor en código ASCII, convierto los caracter de números en 
-            i++;                                           //variables entero para poder operar.( en este caso[n-valor (ASII entre[48,57])-48 posición de '0'
-        }        // ejem: '4'-'0' --> 52-48=4
-
-
-        char caracter = mensaje[i]; //me quedo con el caracter letra, para despues repetirlo n-veces.
-
-        for (int j = 0; j < contador; j++) {  //ciclo encardo de repetir n-veces.
-            mensaje2[k++] = caracter; //Indexación con auto incremento.
-        }
-
-        i++;
-    }
-
-}
