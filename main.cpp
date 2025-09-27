@@ -7,32 +7,108 @@ char* leerArchivo(const char* nombreArchivo);
 unsigned char rotateRight(unsigned char b, int n);
 unsigned char applyXOR(unsigned char b, unsigned char key);
 char* desencriptar(const char* mensaje, int n, unsigned char key);
-void descomprimirRle(char* mensaje, char* mensaje2) 
-void copiaArreglo(char arreDestino[], char arreOrigen[])
-int longitudArr(char cadena[]) 
-void lz78_descomprimir(char comprimido[], char descomprimido[])  
+char* descomprimirRle(char* mensaje);
+char* descomprimirLZ78(char* mensaje);
+bool contieneFragmento(const char* texto, const char* fragmento);
+char* procesarMensaje(const char* mensajeRaw);
+int miStrlen(const char* s);
+void miStrcpy(char* dest, const char* src);
 
+/* ----------------- utilidades ----------------- */
+int miStrlen(const char* s) {
+    if (!s) return 0;
+    int i = 0;
+    while (s[i] != '\0') i++;
+    return i;
+}
 
-/* ----------------- lectura del los archivos.txt ----------------- */
+void miStrcpy(char* dest, const char* src) {
+    if (!dest || !src) return;
+    int i = 0;
+    while (src[i] != '\0') { 
+        dest[i] = src[i]; 
+        i++; 
+    }
+    dest[i] = '\0';
+}
+
+bool contieneFragmento(const char* texto, const char* fragmento) {
+    if (!texto || !fragmento) return false;
+    
+    int lt = miStrlen(texto);
+    int lf = miStrlen(fragmento);
+    
+    if (lf == 0 || lf > lt) return false;
+    
+    for (int i = 0; i <= lt - lf; i++) {
+        bool coincide = true;
+        for (int j = 0; j < lf; j++) {
+            if (texto[i + j] != fragmento[j]) { 
+                coincide = false; 
+                break; 
+            }
+        }
+        if (coincide) return true;
+    }
+    return false;
+}
+
+//procesa el mensaje para quitar separadores ZR si existen
+char* procesarMensaje(const char* mensajeRaw) {
+    if (!mensajeRaw) return nullptr;
+    
+    int len = miStrlen(mensajeRaw);
+    char* resultado = new char[len + 1];
+    int pos = 0;
+    
+    // Verifica si tiene patron ZR
+    bool tieneZR = false;
+    for (int i = 0; i < len - 1; i++) {
+        if (mensajeRaw[i] == 'Z' && mensajeRaw[i+1] == 'R') {
+            tieneZR = true;
+            break;
+        }
+    }
+    
+    if (tieneZR) {
+        cout << "detectado patron ZR, eliminando separadores..." << endl;
+        for (int i = 0; i < len; ) {
+            if (i + 1 < len && mensajeRaw[i] == 'Z' && mensajeRaw[i+1] == 'R') {
+                i += 2;
+            } else {
+                resultado[pos++] = mensajeRaw[i++];
+            }
+        }
+    } else {
+        miStrcpy(resultado, mensajeRaw);
+        pos = len;
+    }
+    
+    resultado[pos] = '\0';
+    return resultado;
+}
+
+/* ----------------- lectura de los archivos.txt ----------------- */
 char* leerArchivo(const char* nombreArchivo) {
-    ifstream archivo(nombreArchivo, ios::binary); // con el binario para evitar saltos de linea
-    if (!archivo) { // si el archivo no exite o hay un error muestra un mensaje y davuleve nullptr q no apunta a nada
-        cout << "ERROR: No se pudo abrir el archivo " << nombreArchivo << endl;
+    ifstream archivo(nombreArchivo, ios::binary);
+    if (!archivo) {
+        cout << "algo salio mal, no se pudo abrir el archivo " << nombreArchivo << endl;
         return nullptr;
     }
     
-    archivo.seekg(0, ios::end); // con seekg se mueve al final del archivo
-    int tamaño = (int)archivo.tellg(); //telling para saber la cantidad de bytes
-    archivo.seekg(0, ios::beg);//mueve el puntero para volver a leer    
-    if (tamaño <= 0) { //si el tamaño es 0 lo cierra
-        cout << "ERROR: Archivo vacío: " << nombreArchivo << endl;
+    archivo.seekg(0, ios::end);
+    int tamaño = (int)archivo.tellg();
+    archivo.seekg(0, ios::beg);
+    
+    if (tamaño <= 0) {
+        cout << "error, el archivo esta vacio: " << nombreArchivo << endl;
         archivo.close();
         return nullptr;
     }
     
-    char* buffer = new char[tamaño + 1]; //asigna espacio para el contenido y para el +1 para el caracternulo q es el fin de la cadena
-    archivo.read(buffer, tamaño); //lee el contenido y lo guada en buffer
-    buffer[tamaño] = '\0'; //agrega el caracter nulo en el +1 de arriba
+    char* buffer = new char[tamaño + 1];
+    archivo.read(buffer, tamaño);
+    buffer[tamaño] = '\0';
     archivo.close();
     
     return buffer;
@@ -40,248 +116,267 @@ char* leerArchivo(const char* nombreArchivo) {
 
 //----------------- operaciones de la rotacion de bits -----------------//
 unsigned char rotateRight(unsigned char b, int n) {
-    n &= 7; //asegura n está en rango 0-7
-    return (unsigned char)(((b >> n) | (b << (8 - n))) & 0xFF); //hace rotacion a la derecha para invertir la hecha a la izquierda por la encriptacion
+    n &= 7;
+    return (unsigned char)(((b >> n) | (b << (8 - n))) & 0xFF);
 }
 
-// desplaza los bits de b a la derecha o desplaza los bit de b 8 posiciones, con el 0xFF se asegura de que el resultado este limitado a 8 bits.
-
-//--------------- claves XOR ---------------------
-unsigned char applyXOR(unsigned char b, unsigned char key) { //recibe 2 parametros b y key
-    return (unsigned char)(b ^ key); // aplica un XOR bit a bit entre b y key, devulelve 1 los bits son diferentes, y 0 si son iguales 
+unsigned char applyXOR(unsigned char b, unsigned char key) {
+    return (unsigned char)(b ^ key);
 }
 
 //----------------- desencriptar ----------------//
-char* desencriptar(const char* mensaje, int n, unsigned char key) { //mensaje.txt n=bits rotados key=XOR, retorna un puntero en una nueva cadena desencripta
-    if (!mensaje) return nullptr; // si mensaje nulo o no hay nada no hace nada
-    int len = 0;
-    while (mensaje[len] != '\0') len++; //calcula longitud del mensaje hasta encontrar caracter nulo 
+char* desencriptar(const char* mensaje, int n, unsigned char key) {
+    if (!mensaje) return nullptr;
+    int len = miStrlen(mensaje);
+    if (len == 0) return nullptr;
     
-    if (len == 0) return nullptr; // si es 0 no hay nada q desencriptar
-    
-    char* resultado = new char[len + 1]; //reserva memoria para cadena + /0
-    for (int i = 0; i < len; i++) { //recorre cada caracter el mensaje encriptado
+    char* resultado = new char[len + 1];
+    for (int i = 0; i < len; i++) {
         unsigned char b = (unsigned char)mensaje[i];
-        //convierte caracteres unsigned char para q trabajen a nivel de bits (0-255)
         unsigned char despuesXOR = applyXOR(b, key);
-        //Rotación derecha (inverso de rotacion izquierda)
-        unsigned char original = rotateRight(despuesXOR, n); //aplica la rotacion derecha revirtiendo la izquierda
-        resultado[i] = (char)original; //vuelve la cadena desencripta a se otra vez char, no unsigned char
+        unsigned char original = rotateRight(despuesXOR, n);
+        resultado[i] = (char)original;
     }
-    resultado[len] = '\0'; //para q sea valida
+    resultado[len] = '\0';
     return resultado;
 }
 
-//----------------- DESCOMPRESIÓN LZ78 ----------------//
-
-//Función que copia un char arreglo en otro char arreglo.
-void copiaArreglo(char arreDestino[], char arreOrigen[]) {
+//----------------- descompresion rle con memoria dinamica ----------------//
+char* descomprimirRle(char* mensaje) {
+    if (!mensaje) return nullptr;
+    int len = miStrlen(mensaje);
+    if (len == 0) return nullptr;
+    
+    //buffer dinamico mas grande
+    int capacidad = len * 100 + 1;
+    char* resultado = new char[capacidad];
+    int pos = 0;
     int i = 0;
-    while (arreOrigen[i] != '\0') {
-        arreDestino[i] = arreOrigen[i];
-        i++;
-    }
-    arreDestino[i] = '\0';
-}
 
-int longitudArr(char cadena[]) {
-    int contador = 0;
-    while (cadena[contador] != '\0') {
-        contador++;
-    }
-    return contador;
-}
-
-// función de descompresión LZ78
-void lz78_descomprimir(char comprimido[], char descomprimido[]) {
-    char diccionario[1000][1000];
-    int tamDic = 0;
-    int posSalida = 0;
-    int i = 0;
-    while (comprimido[i] != '\0') {
-        int indice = 0;
-
-        // Leer números (índice)
-        while (comprimido[i] >= '0' && comprimido[i] <= '9') {
-            indice = indice * 10 + (comprimido[i] - '0');
+    while (mensaje[i] != '\0' && pos < capacidad - 1) {
+        if (mensaje[i] < '0' || mensaje[i] > '9') {
+            delete[] resultado;
+            return nullptr;
+        }
+        
+        int contador = 0;
+        while (mensaje[i] >= '0' && mensaje[i] <= '9') {
+            contador = contador * 10 + (mensaje[i] - '0');
             i++;
         }
-
-        char c = comprimido[i];
-        i++;
-
-        char nuevo[1000] = "";
-
-        if (indice == 0) {
-            nuevo[0] = c;
-            nuevo[1] = '\0';
-        }
-        else {
-            copiaArreglo(nuevo, diccionario[indice - 1]);
-            int len = longitudArr(nuevo);
-            nuevo[len] = c;
-            nuevo[len + 1] = '\0';
+        
+        if (mensaje[i] == '\0') {
+            delete[] resultado;
+            return nullptr;
         }
 
-        copiaArreglo(diccionario[tamDic], nuevo);
-        tamDic++;
-
-        int j = 0;
-        while (nuevo[j] != '\0') {
-            descomprimido[posSalida] = nuevo[j];
-            posSalida++;
-            j++;
+        char caracter = mensaje[i++];
+        
+        // Proteger contra desbordamiento
+        for (int j = 0; j < contador && pos < capacidad - 1; j++) {
+            resultado[pos++] = caracter;
         }
     }
-
-    descomprimido[posSalida] = '\0';
-}
-
-//----------------- funciones del RLE -----------------//
-void descomprimirRle(char* mensaje, char* mensaje2) {
-    //Ingresa un puntero que contiene la dirección de un arreglo de char.
-    int i = 0;
-    int k = 0;
-
-    while (mensaje[i] != '\0') { //Solo se entra cuando es distinto del final de la cadena(! caracter vacio).
-        int contador = 0;
-
-
-        while (mensaje[i] >= '0' && mensaje[i] <= '9') { //Verifico que es un número y no una letra, utlizando el intervalo[0,9], en ASCII[48,57]
-            contador = contador * 10 + (mensaje[i] - '0'); //Utilizando el valor en código ASCII, convierto los caracter de números en 
-            i++;                                           //variables entero para poder operar.( en este caso[n-valor (ASII entre[48,57])-48 posición de '0'
-        }        // ejem: '4'-'0' --> 52-48=4
-
-
-        char caracter = mensaje[i]; //me quedo con el caracter letra, para despues repetirlo n-veces.
-
-        for (int j = 0; j < contador; j++) {  //ciclo encardo de repetir n-veces.
-            mensaje2[k++] = caracter; //Indexación con auto incremento.
-        }
-
-        i++;
-    }
-
-}
-
-//----------------- borrador del main ----------------- //
-
-int main() {
-    cout << "   DESAFÍO 1: INGENIERIA INVERSA " << endl;
-    cout << "se esta cargando los archivos..." << endl;
     
-    //lee el mensaje encriptado
-    char* mensajeEncriptado = leerArchivo("mensaje.txt");
-    if (!mensajeEncriptado) {
-        cout << "!!Hubo un error, no se pudo cargar mensaje.txt¡¡" << endl;
+    resultado[pos] = '\0';
+    return resultado;
+}
+
+//----------------- descompresion lz78 con memoria dinamica ----------------//
+char* descomprimirLZ78(char* mensaje) {
+    if (!mensaje) return nullptr;
+    int len = miStrlen(mensaje);
+    if (len == 0) return nullptr;
+    
+    //diccionario dinamico
+    int tamDic = 0;
+    int capacidadDic = 512;
+    char** diccionario = new char*[capacidadDic];
+    
+    //buffer de salida dinamico
+    int capacidadSalida = len * 100 + 1;
+    char* salida = new char[capacidadSalida];
+    int posSalida = 0;
+    
+    int i = 0;
+    while (i < len && posSalida < capacidadSalida - 10) {
+        if (!(mensaje[i] >= '0' && mensaje[i] <= '9')) {
+            delete[] salida;
+            for (int k = 0; k < tamDic; k++) delete[] diccionario[k];
+            delete[] diccionario;
+            return nullptr;
+        }
+
+        int indice = 0;
+        while (i < len && mensaje[i] >= '0' && mensaje[i] <= '9') {
+            indice = indice * 10 + (mensaje[i] - '0');
+            i++;
+        }
+        
+        if (i >= len) break;
+        char c = mensaje[i++];
+
+        //obtene prefijo
+        int longPrefijo = 0;
+        char* prefijo = nullptr;
+        if (indice > 0) {
+            if (indice > tamDic) {
+                delete[] salida;
+                for (int k = 0; k < tamDic; k++) delete[] diccionario[k];
+                delete[] diccionario;
+                return nullptr;
+            }
+            prefijo = diccionario[indice - 1];
+            longPrefijo = miStrlen(prefijo);
+        }
+
+        //crea nueva entrada
+        char* nuevaEntrada = new char[longPrefijo + 2];
+        int pos = 0;
+        
+        if (prefijo) {
+            for (int j = 0; j < longPrefijo; j++) {
+                nuevaEntrada[pos++] = prefijo[j];
+            }
+        }
+        nuevaEntrada[pos++] = c;
+        nuevaEntrada[pos] = '\0';
+
+        //expande diccionario si es necesario
+        if (tamDic >= capacidadDic) {
+            capacidadDic *= 2;
+            char** nuevoDic = new char*[capacidadDic];
+            for (int j = 0; j < tamDic; j++) {
+                nuevoDic[j] = diccionario[j];
+            }
+            delete[] diccionario;
+            diccionario = nuevoDic;
+        }
+
+        diccionario[tamDic++] = nuevaEntrada;
+
+        //Añade a salida
+        int longNueva = miStrlen(nuevaEntrada);
+        for (int j = 0; j < longNueva && posSalida < capacidadSalida - 1; j++) {
+            salida[posSalida++] = nuevaEntrada[j];
+        }
+    }
+
+    salida[posSalida] = '\0';
+    
+    //libera diccionario
+    for (int k = 0; k < tamDic; k++) {
+        delete[] diccionario[k];
+    }
+    delete[] diccionario;
+    
+    return salida;
+}
+
+//----------------- main principal ----------------- //
+int main() {
+    cout << " #--DESAFIO 1: INGENIERIA INVERSA--#" << endl;
+    cout << "Cargando archivos (mensaje.txt y pista.txt)..." << endl;
+    
+    char* mensajeRaw = leerArchivo("mensaje.txt");
+    if (!mensajeRaw) {
+        cout << "Error, No se pudo cargar mensaje.txt" << endl;
         return 1;
     }
-    //lee el fragmento de pista
+    
     char* fragmentoPista = leerArchivo("pista.txt");
     if (!fragmentoPista) {
-        cout << "!!Hubo un error, no se pudo cargar pista.txt¡¡" << endl;
-        delete[] mensajeEncriptado;
+        cout << "Error, No se pudo cargar pista.txt" << endl;
+        delete[] mensajeRaw;
         return 1;
     }
     
-    cout << "Los archivos cargados han sido cargados correctamente" << endl;
-    cout << "Mensaje encriptado - Longitud: " << miStrlen(mensajeEncriptado) << endl;
-    cout << "Fragmento de pista: '" << fragmentoPista << "'" << endl;
-    cout << endl;
+    char* mensajeEncriptado = procesarMensaje(mensajeRaw);
+    delete[] mensajeRaw;
     
-    cout << "Iniciando analisis de fuerza bruta:..." << endl;
-    cout << "Probando combinaciones (rotacion 1-7, clave XOR 0-255)..." << endl;
-    cout << endl;
+    if (!mensajeEncriptado) {
+        cout << "ERROR: No se pudo procesar el mensaje" << endl;
+        delete[] fragmentoPista;
+        return 1;
+    }
+    
+    int lenMensaje = miStrlen(mensajeEncriptado);
+    
+    cout << "Los archivos (mensaje.txt y pista.txt) han sido cargados correctamente" << endl;
+    cout << "Mensaje procesado - Longitud: " << lenMensaje << endl;
+    cout << "Fragmento de pista: '" << fragmentoPista << "'" << endl;
+    cout << "Iniciando la fuerza bruta..." << endl;
+    cout << "Probando " << (7 * 256) << " combinaciones..." << endl << endl;
     
     bool encontrado = false;
+    int combinacionesIntentadas = 0;
     
-    //intenta todas las combinaciones con la rotacion de bits
     for (int n = 1; n <= 7 && !encontrado; n++) {
         cout << "Probando rotacion " << n << " bits..." << endl;
         
         for (int key = 0; key <= 255 && !encontrado; key++) {
-            //desencripta, provando claves XOR de 0 a 255
+            combinacionesIntentadas++;
+            
             char* desencriptado = desencriptar(mensajeEncriptado, n, (unsigned char)key);
             if (!desencriptado) continue;
             
-            //mira si el resultado desencriptado(suponiendo que este en formato RLE) contiene la pista cuando se descomprime con RLE
-            
-            //crear buffer en el heap para descompresion
-            char* buffer = new char[miStrlen(desencriptado) * 10 + 1];
-            int pos = 0;
-            int i = 0;
-            bool formatoValido = true;
-            
-            //intenta descomprimir RLE
-            while (desencriptado[i] != '\0' && formatoValido) {
-                if (desencriptado[i] < '0' || desencriptado[i] > '9') {
-                    formatoValido = false;
-                    break;
-                }
-                
-                int contador = 0;
-                while (desencriptado[i] >= '0' && desencriptado[i] <= '9') { // convierte el caracter a entero.
-                    contador = contador * 10 + (desencriptado[i] - '0');
-                    i++;
-                }
-                
-                if (desencriptado[i] == '\0') {
-                    formatoValido = false;
-                    break;
-                }
-                
-                char caracter = desencriptado[i++];
-                for (int j = 0; j < contador && pos < miStrlen(desencriptado) * 10; j++) {
-                    buffer[pos++] = caracter;
-                }
-            }
-            buffer[pos] = '\0'; // el \ es pare terminar la cadena o es un caracter nulo
-            
-            //verifica si contiene el fragmento de la pista
-            if (formatoValido && contieneFragmento(buffer, fragmentoPista)) {
-                cout << endl;
-                cout << "¡INFOMRACION ENCONTRADA!" << endl;
-                cout << "Método: RLE" << endl;
+            //probar rle
+            char* resultadoRLE = descomprimirRle(desencriptado);
+            if (resultadoRLE && contieneFragmento(resultadoRLE, fragmentoPista)) {
+                cout << endl << "_____________________________________" << endl;
+                cout << "     SOLUCION ENCONTRADA!" << endl;
+                cout << "_____________________________________" << endl;
+                cout << "Metodo de compresion: RLE" << endl;
                 cout << "Rotacion (n): " << n << " bits" << endl;
                 cout << "Clave XOR (K): " << key << endl;
-                cout << "El MENSAJE ORIGINAL COMPLETO ES:" << endl; 
-                cout << buffer << endl;
+                cout << "Combinaciones intentadas: " << combinacionesIntentadas << endl;
+                cout << "_____________________________________" << endl;
+                cout << "MENSAJE ORIGINAL COMPLETO:" << endl;
+                cout << resultadoRLE << endl;
+                cout << "_____________________________________" << endl;
                 encontrado = true;
             }
             
-            delete[] buffer;
-            // Si no encontró con RLE, probar LZ78
+            if (resultadoRLE) delete[] resultadoRLE;
+            
+            //probar LZ78 si RLE fallo
             if (!encontrado) {
-              char* resultadoLZ78 = descomprimirLZ78(desencriptado);
-              if (resultadoLZ78 && miStrlen(resultadoLZ78) > 0) {
-                if (contieneFragmento(resultadoLZ78, fragmentoPista)) {
-                cout << endl;
-                cout << "¡INFORMACION ENCONTRADA!" << endl;
-                cout << "Método: LZ78" << endl;
-                cout << "Rotacion (n): " << n << " bits" << endl;
-                cout << "Clave XOR (K): " << key << endl;
-                cout << "El MENSAJE ORIGINAL COMPLETO ES:" << endl;
-                cout << resultadoLZ78 << endl;
-                encontrado = true;
+                char* resultadoLZ78 = descomprimirLZ78(desencriptado);
+                if (resultadoLZ78 && contieneFragmento(resultadoLZ78, fragmentoPista)) {
+                    cout << endl << "_____________________________________" << endl;
+                    cout << "     SOLUCION ENCONTRADA!" << endl;
+                    cout << "_____________________________________" << endl;
+                    cout << "Metodo de compresion: LZ78" << endl;
+                    cout << "Rotacion (n): " << n << " bits" << endl;
+                    cout << "Clave XOR (K): " << key << endl;
+                    cout << "Combinaciones intentadas: " << combinacionesIntentadas << endl;
+                    cout << "_____________________________________" << endl;
+                    cout << "MENSAJE ORIGINAL COMPLETO:" << endl;
+                    cout << resultadoLZ78 << endl;
+                    cout << "_____________________________________" << endl;
+                    encontrado = true;
+                }
+                
+                if (resultadoLZ78) delete[] resultadoLZ78;
             }
-            delete[] resultadoLZ78;
+            
+            delete[] desencriptado;
+            
+            if (combinacionesIntentadas % 200 == 0) {
+                int porcentaje = (combinacionesIntentadas * 100) / (7 * 256);
+                cout << "  Progreso: " << combinacionesIntentadas << "/1792 (" << porcentaje << "%)" << endl;
+            }
         }
     }
-    delete[] desencriptado;
-  }
-}
-
-//limpiar memoria del heap
-delete[] mensajeEncriptado;
-delete[] fragmentoPista;
+    
+    delete[] mensajeEncriptado;
+    delete[] fragmentoPista;
     
     if (!encontrado) {
-        cout << "No se ha encontrado la pista con los parametros dados." << endl;
+        cout << endl << "No se encontro solucion" << endl;
         return 1;
     }
     
-    cout << "El analisis ha sido completado exitosamente." << endl;
+    cout << endl << "Analisis completado exitosamente." << endl;
     return 0;
 }
-
-
