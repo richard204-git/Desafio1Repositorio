@@ -1,6 +1,6 @@
 # Desafío 1 - Informática II 2025-2
 
-Este proyecto implementa un sistema de ingeniería inversa para desencripta y descomprime un mensaje: 
+Este proyecto implementa un sistema de ingeniería inversa para desencriptar y descomprimir un mensaje: 
 
 1. Lee el mensaje encriptado (mensaje.txt) y una pista (pista.txt).
 2. Intenta desencriptar el mensaje probado:
