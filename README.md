@@ -1,3 +1,5 @@
+# Enlace del video desafio 1: https://www.youtube.com/watch?v=b4nWaUNKd5o
+
 # Desafío 1 - Informática II 2025-2
 
 Este proyecto implementa un sistema de ingeniería inversa para desencriptar y descomprimir un mensaje: 
